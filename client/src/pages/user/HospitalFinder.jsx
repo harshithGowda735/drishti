@@ -4,6 +4,8 @@ import { gsap } from 'gsap';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import * as api from '../../services/api';
+import * as tf from '@tensorflow/tfjs';
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
 
 const crowdColors = { low: '#10b981', moderate: '#f59e0b', high: '#ef4444', very_high: '#dc2626' };
 
@@ -12,6 +14,7 @@ export default function HospitalFinder() {
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [liveIntel, setLiveIntel] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -24,23 +27,22 @@ export default function HospitalFinder() {
     fallbackFetch(); 
   }, []);
 
-  // Real-time IoT Sync for the FIRST (Priority) hospital
+  // Real-time IoT Sync replaced by LIVE CAMERA for the first card
+  // (We'll keep the poller as a fallback but allow manual scan to override)
   useEffect(() => {
-    if (hospitals.length > 0) {
+    if (hospitals.length > 0 && !isScanning) {
       const priorityId = hospitals[0]._id;
       const interval = setInterval(async () => {
         try {
           const res = await fetch(`http://localhost:8000/iot/sync/${priorityId}`);
           const data = await res.json();
           setLiveIntel(data);
-          
-          // Sync with main state to update the UI card
           setHospitals(prev => prev.map((h, i) => i === 0 ? { ...h, crowdDensity: data.density, crowdCount: data.live_count } : h));
-        } catch (err) { console.warn("AI Hub sync offline"); }
-      }, 3000);
+        } catch (err) { /* silent fallback */ }
+      }, 5000);
       return () => clearInterval(interval);
     }
-  }, [hospitals.map(h => h._id).join(',')]);
+  }, [hospitals.map(h => h._id).join(','), isScanning]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -163,12 +165,26 @@ export default function HospitalFinder() {
                 )}
               </div>
 
-              {/* LIVE CCTV BADGE for the first card */}
-              {hospitals[0]?._id === h._id && liveIntel && (
-                <div style={{ marginBottom: 12, padding: '6px 12px', background: 'rgba(99,102,241,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--primary-light)' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', animation: 'pulse 1s infinite' }} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-light)', letterSpacing: '0.05em' }}>LIVE CCTV: {liveIntel.camera_metadata.model}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>{liveIntel.live_count} PPL</span>
+              {/* LIVE CAMERA SCANNER for the first card */}
+              {hospitals[0]?._id === h._id && (
+                <div style={{ marginBottom: 16 }}>
+                  {!isScanning ? (
+                    <button 
+                      className="btn btn-outline btn-sm btn-block"
+                      style={{ border: '1px dashed var(--primary)', color: 'var(--primary-light)', fontSize: '0.75rem' }}
+                      onClick={(e) => { e.stopPropagation(); setIsScanning(true); }}>
+                      📷 ACTIVATE LIVE CCTV SCANNER
+                    </button>
+                  ) : (
+                    <LiveCameraScanner 
+                      onUpdate={(count) => {
+                        const density = count > 10 ? 'high' : count > 5 ? 'moderate' : 'low';
+                        setHospitals(prev => prev.map((item, i) => i === 0 ? { ...item, crowdDensity: density, crowdCount: count } : item));
+                        setLiveIntel({ live_count: count, density, camera_metadata: { model: 'Laptop-Front-CAM' } });
+                      }}
+                      onClose={() => setIsScanning(false)}
+                    />
+                  )}
                 </div>
               )}
 
@@ -524,6 +540,71 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+function LiveCameraScanner({ onUpdate, onClose }) {
+  const videoRef = useRef(null);
+  const [model, setModel] = useState(null);
+  const [scanning, setScanning] = useState(false);
+
+  useEffect(() => {
+    cocoSsd.load().then(m => setModel(m));
+    setupCamera();
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  const setupCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 320, height: 240, facingMode: "user" } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
+          setScanning(true);
+        };
+      }
+    } catch (err) {
+      console.error("Camera Error:", err);
+      alert("Please allow camera access for live scanning.");
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    let frameId;
+    const detect = async () => {
+      if (model && videoRef.current && videoRef.current.readyState === 4) {
+        const predictions = await model.detect(videoRef.current);
+        const people = predictions.filter(p => p.class === 'person').length;
+        onUpdate(people);
+      }
+      frameId = requestAnimationFrame(detect);
+    };
+    if (scanning) detect();
+    return () => cancelAnimationFrame(frameId);
+  }, [model, scanning]);
+
+  return (
+    <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden', position: 'relative', border: '1px solid var(--primary)', marginTop: 12 }}>
+      <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: 160, objectFit: 'cover' }} />
+      <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', animation: 'pulse 1s infinite' }} />
+        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>AI SCANNING ACTIVE</span>
+      </div>
+      <button 
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        ✕
+      </button>
     </div>
   );
 }
