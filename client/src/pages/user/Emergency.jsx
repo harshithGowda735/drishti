@@ -27,6 +27,17 @@ export default function Emergency({ user }) {
         symptoms: symptoms ? symptoms.split(',').map(s => s.trim()) : ['Emergency'],
         notes: 'Emergency request from patient'
       });
+      
+      // Emit real-time notification to the found hospital
+      const { emitEmergency } = await import('../../services/socket');
+      if (res.data.hospital?._id) {
+        emitEmergency(res.data.hospital._id, {
+          patientName: user?.name || 'Anonymous Patient',
+          symptoms: symptoms || 'Critical Condition',
+          location: 'Current GPS'
+        });
+      }
+
       setResult(res.data);
       setStep('found');
     } catch {

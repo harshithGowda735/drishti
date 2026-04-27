@@ -19,6 +19,7 @@ import HospitalAppointments from './pages/hospital/Appointments';
 import CrowdMonitor from './pages/hospital/CrowdMonitor';
 import EmergencyPanel from './pages/hospital/EmergencyPanel';
 import Analytics from './pages/hospital/Analytics';
+import DoctorManagement from './pages/hospital/DoctorManagement';
 
 // ASHA pages
 import AshaDashboard from './pages/asha/Dashboard';
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/hospital/crowd" element={<CrowdMonitor />} />
           <Route path="/hospital/emergency" element={<EmergencyPanel />} />
           <Route path="/hospital/analytics" element={<Analytics />} />
+          <Route path="/hospital/doctors" element={<DoctorManagement user={user} />} />
 
           {/* ASHA Routes */}
           <Route path="/asha" element={<AshaDashboard user={user} />} />

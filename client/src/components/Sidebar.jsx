@@ -16,6 +16,7 @@ const navItems = {
     { path: '/hospital/appointments', icon: '📅', label: 'Appts' },
     { path: '/hospital/crowd',        icon: '👥', label: 'Crowd' },
     { path: '/hospital/emergency',    icon: '🚑', label: 'Emergency' },
+    { path: '/hospital/doctors',      icon: '👨‍⚕️', label: 'Doctors' },
     { path: '/hospital/analytics',    icon: '📈', label: 'Analytics' },
   ],
   doctor: [
@@ -23,6 +24,7 @@ const navItems = {
     { path: '/hospital/beds',         icon: '🛏️',  label: 'Beds' },
     { path: '/hospital/appointments', icon: '📅', label: 'Appts' },
     { path: '/hospital/emergency',    icon: '🚑', label: 'Emergency' },
+    { path: '/hospital/doctors',      icon: '👨‍⚕️', label: 'Doctors' },
     { path: '/hospital/analytics',    icon: '📈', label: 'Analytics' },
   ],
   asha_worker: [

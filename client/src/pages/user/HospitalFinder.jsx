@@ -223,7 +223,9 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [paymentStep, setPaymentStep] = useState(false);
   const modalRef = useRef(null);
+  const assignedDoctor = "Dr. Sarah Wilson"; // Mocked for demo
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -242,11 +244,16 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
 
   const handleBook = async (e) => {
     e.preventDefault();
+    setPaymentStep(true);
+  };
+
+  const confirmPayment = async () => {
     setLoading(true);
     try {
       const res = await api.bookAppointment({
         hospital: hospital._id, department: form.department, date: form.date,
-        timeSlot: form.timeSlot, type: form.type, symptoms: form.symptoms ? form.symptoms.split(',').map(s => s.trim()) : []
+        timeSlot: form.timeSlot, type: form.type, symptoms: form.symptoms ? form.symptoms.split(',').map(s => s.trim()) : [],
+        isPaid: true, fee: 100
       });
       setSuccess(res.data);
     } catch (err) { alert(err.response?.data?.message || 'Booking failed'); }
@@ -256,21 +263,47 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
   if (success) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal animate-scale-in" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 440 }}>
-          <div style={{ fontSize: '4rem', marginBottom: 16 }} className="float-anim">✅</div>
-          <h2 style={{ color: 'var(--success)', fontWeight: 900, fontSize: '1.6rem' }}>BOOKED!</h2>
+        <div className="modal animate-scale-in" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 440, border: '2px solid var(--success)' }}>
+          <div style={{ fontSize: '4rem', marginBottom: 16 }} className="float-anim">📩</div>
+          <h2 style={{ color: 'var(--success)', fontWeight: 900, fontSize: '1.6rem' }}>SMS RECEIPT SENT!</h2>
           <p style={{ color: 'var(--text-secondary)', margin: '12px 0', fontSize: '0.95rem' }}>
             Confirmed at <strong>{hospital.name}</strong>
           </p>
-          <div style={{ background: 'var(--bg-surface)', borderRadius: 12, padding: 20, margin: '20px 0', textAlign: 'left', border: '1px solid var(--border)' }}>
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 12, padding: 20, margin: '20px 0', textAlign: 'left', border: '1px solid var(--border)', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: -10, right: 10, background: 'var(--success)', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: 10, fontWeight: 800 }}>PAID ₹100</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.9rem' }}>
+              <div><span style={{ color: 'var(--text-muted)' }}>Patient ID:</span><br /><strong>HC-P-{Math.floor(Math.random()*10000)}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Doctor:</span><br /><strong>{assignedDoctor}</strong></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Date:</span><br /><strong>{form.date}</strong></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Time:</span><br /><strong>{form.timeSlot}</strong></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Dept:</span><br /><strong>{form.department}</strong></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Type:</span><br /><strong>{form.type}</strong></div>
+            </div>
+            <div style={{ marginTop: 15, paddingTop: 15, borderTop: '1px dashed var(--border)', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+              Scan QR at hospital for instant entry
             </div>
           </div>
-          <button className="btn btn-primary btn-block btn-lg" onClick={onClose}>Done</button>
+          <button className="btn btn-primary btn-block btn-lg" onClick={onClose}>Finish</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentStep) {
+    return (
+      <div className="modal-overlay" onClick={() => setPaymentStep(false)}>
+        <div className="modal animate-scale-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: 16 }}>💳</div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: 8 }}>Secure Payment</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
+            Appointment booking fee for <strong>{hospital.name}</strong>
+          </p>
+          <div style={{ background: 'var(--bg-surface)', padding: 24, borderRadius: 16, marginBottom: 24, border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--text-primary)' }}>₹100</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Standard Consultation Fee</div>
+          </div>
+          <button className="btn btn-primary btn-block btn-lg" onClick={confirmPayment} disabled={loading}>
+            {loading ? 'Processing...' : 'Pay & Confirm Booking'}
+          </button>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => setPaymentStep(false)}>Cancel</button>
         </div>
       </div>
     );

@@ -1,11 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getSocket, joinHospitalRoom, leaveHospitalRoom } from '../../services/socket';
 
-export default function EmergencyPanel() {
-  const [emergencies] = useState([
+export default function EmergencyPanel({ user }) {
+  const [emergencies, setEmergencies] = useState([
     { id: 1, patient: 'Amit Patel', age: 45, symptoms: ['Chest Pain', 'Breathing Difficulty'], time: '5 min ago', status: 'active', bed: 'E-03' },
     { id: 2, patient: 'Ravi Singh', age: 32, symptoms: ['Accident', 'Head Injury'], time: '12 min ago', status: 'active', bed: 'E-07' },
     { id: 3, patient: 'Lakshmi N.', age: 68, symptoms: ['Stroke Symptoms', 'Paralysis'], time: '25 min ago', status: 'stabilized', bed: 'ICU-02' },
   ]);
+
+  useEffect(() => {
+    const hId = user?.hospitalId || 'hospital_1'; // Fallback for demo
+    joinHospitalRoom(hId);
+    const socket = getSocket();
+
+    socket.on('emergency_alert', (data) => {
+      const newEmergency = {
+        id: Date.now(),
+        patient: data.patientName,
+        age: 28, // Mocked
+        symptoms: [data.symptoms],
+        time: 'Just Now',
+        status: 'active',
+        bed: 'Triage'
+      };
+      setEmergencies(prev => [newEmergency, ...prev]);
+      
+      // Play alert sound for demo
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play();
+      } catch {}
+    });
+
+    return () => {
+      socket.off('emergency_alert');
+      leaveHospitalRoom(hId);
+    };
+  }, [user?.hospitalId]);
 
   return (
     <div style={{ animation: 'fadeIn 0.4s ease' }}>

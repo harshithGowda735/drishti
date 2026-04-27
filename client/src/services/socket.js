@@ -39,6 +39,12 @@ export const leaveHospitalRoom = (hospitalId) => {
   s.emit('leave_hospital', hospitalId);
 };
 
+// Emit emergency to a hospital
+export const emitEmergency = (hospitalId, emergencyData) => {
+  const s = getSocket();
+  s.emit('new_emergency', { hospitalId, ...emergencyData });
+};
+
 // Disconnect completely
 export const disconnectSocket = () => {
   if (socket) {
