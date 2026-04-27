@@ -114,11 +114,19 @@ export default function CrowdMonitor({ user }) {
         
         // Update the backend
         if (hospital?._id) {
+          // Standard Node.js Backend Update
           api.updateCrowdData({
             hospitalId: hospital._id,
             cameraId: 'CAM-LAPTOP-01',
             zone: 'AI Scanner',
             peopleCount: count
+          }).catch(() => {});
+
+          // AegisOS AI Intelligence Engine Sync (FastAPI)
+          fetch(`http://localhost:8000/analyze-frame/${hospital._id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ count: count, node_ref: 'LAPTOP-WEBCAM-NODE' })
           }).catch(() => {});
         }
 
