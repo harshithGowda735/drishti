@@ -9,7 +9,8 @@ const crowdColors = { low: '#10b981', moderate: '#f59e0b', high: '#ef4444', very
 
 export default function HospitalFinder() {
   const [hospitals, setHospitals] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -17,7 +18,10 @@ export default function HospitalFinder() {
   const cardsRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => { fetchHospitals(); }, []);
+  useEffect(() => { 
+    // Initial fetch with default location
+    fallbackFetch(); 
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -32,28 +36,31 @@ export default function HospitalFinder() {
     return () => ctx.revert();
   }, [loading, filter, hospitals.length]);
 
-  const fetchHospitals = async () => {
-    setLoading(true);
-    
-    // Attempt to get user location
+  const handleLocationRequest = () => {
+    setLocating(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude, longitude } = position.coords;
+        setLoading(true);
         try {
           const res = await api.smartFind({ lat: latitude, lng: longitude });
           setHospitals(res.data);
-        } catch {
+        } catch (err) {
+          console.error("Smart Find Error:", err);
+          alert("Could not fetch nearby hospitals. Showing all available.");
           await fallbackFetch();
         }
         setLoading(false);
-      }, async (error) => {
-        console.warn("Geolocation error:", error.message);
-        await fallbackFetch();
-        setLoading(false);
-      });
+        setLocating(false);
+      }, (error) => {
+        setLocating(false);
+        alert("Location access denied or unavailable. Using default city view.");
+        fallbackFetch();
+      }, { timeout: 10000 });
     } else {
-      await fallbackFetch();
-      setLoading(false);
+      setLocating(false);
+      alert("Geolocation is not supported by your browser.");
+      fallbackFetch();
     }
   };
 
@@ -82,13 +89,22 @@ export default function HospitalFinder() {
 
       {/* Search & Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <input 
-          className="input-field" 
-          placeholder="🔍 Search hospital name or city..." 
-          value={search} 
-          onChange={e => setSearch(e.target.value)}
-          style={{ flex: '1 1 300px', minWidth: 0 }} 
-        />
+        <div style={{ position: 'relative', flex: '1 1 300px' }}>
+          <input 
+            className="input-field" 
+            placeholder="🔍 Search hospital name or city..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', paddingRight: 110 }} 
+          />
+          <button 
+            className={`btn btn-sm ${locating ? 'btn-ghost' : 'btn-primary'}`}
+            onClick={handleLocationRequest}
+            disabled={locating}
+            style={{ position: 'absolute', right: 6, top: 4, height: 36, fontSize: '0.7rem', borderRadius: 10, padding: '0 12px' }}>
+            {locating ? '⌛ Locating...' : '📍 Nearby'}
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {['all', 'government', 'private', 'clinic', 'phc'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
