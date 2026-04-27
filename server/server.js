@@ -51,6 +51,7 @@ app.use('/api/hospitals', require('./routes/hospitalRoutes'));
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
 app.use('/api/records', require('./routes/recordRoutes'));
 app.use('/api/crowd', require('./routes/crowdRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

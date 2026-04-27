@@ -7,6 +7,7 @@ export default function AIAnalysis() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState(null);
+  const [reportDetails, setReportDetails] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const leftColRef = useRef(null);
@@ -27,11 +28,14 @@ export default function AIAnalysis() {
   ];
 
   const handleAnalyze = async () => {
-    if (!file) { alert('Please select a report file first'); return; }
+    if (!file && !reportDetails) { alert('Please provide a report file or details'); return; }
     setLoading(true);
     setResult(null);
     try {
-      const res = await api.analyzeReport({ reportType, fileName: file.name });
+      const res = await api.analyzeReport({ 
+        reportType, 
+        reportDetails: reportDetails || `Analysis for ${file?.name}` 
+      });
       setResult(res.data);
       // Animation for results appearance
       setTimeout(() => {
@@ -40,7 +44,10 @@ export default function AIAnalysis() {
           { y: 0, opacity: 1, stagger: 0.1, duration: 0.5, ease: 'power2.out' }
         );
       }, 100);
-    } catch { alert('Analysis failed'); }
+    } catch (err) { 
+      console.error(err);
+      alert('AI Analysis failed. Please check your connection or API key.'); 
+    }
     setLoading(false);
   };
 
@@ -64,8 +71,6 @@ export default function AIAnalysis() {
     const selectedFile = e.target.files[0];
     if (selectedFile) setFile(selectedFile);
   };
-
-  const riskColors = { low: 'var(--success)', moderate: 'var(--warning)', high: 'var(--danger)', critical: '#dc2626' };
 
   return (
     <div className="animate-fade-in" style={{ position: 'relative', zIndex: 1 }}>
@@ -140,8 +145,19 @@ export default function AIAnalysis() {
             )}
           </div>
 
+          <div className="input-group" style={{ marginBottom: 20 }}>
+            <label>📝 Report Summary / Symptoms</label>
+            <textarea 
+              className="input-field" 
+              placeholder="e.g., Blood sugar 240 mg/dL, High cholesterol..."
+              style={{ minHeight: 100, resize: 'vertical' }}
+              value={reportDetails}
+              onChange={e => setReportDetails(e.target.value)}
+            />
+          </div>
+
           <button className="btn btn-primary btn-block btn-lg" onClick={handleAnalyze} disabled={loading}>
-            {loading ? '🔄 Running AI Models...' : '🧠 Start AI Analysis'}
+            {loading ? '🔄 Consulting Gemma 3 AI...' : '🧠 Start AI Analysis'}
           </button>
         </div>
 
@@ -159,62 +175,49 @@ export default function AIAnalysis() {
             </div>
           ) : result ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Model info */}
-              <div className="card" style={{ borderLeft: '4px solid var(--primary)' }}>
+              {/* Header Section */}
+              <div className="card" style={{ borderLeft: '4px solid var(--primary)', background: 'var(--bg-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: '1.4rem' }}>🤖</span>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Analysis Engine</h3>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Gemma 3 AI Insights</h3>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <span className="badge badge-primary">{result.model}</span>
-                    <span className="badge badge-success">{(result.confidence * 100).toFixed(0)}% Accuracy</span>
-                  </div>
+                  <span className={`badge badge-${result.riskLevel === 'high' || result.riskLevel === 'critical' ? 'danger' : result.riskLevel === 'moderate' ? 'warning' : 'success'}`} style={{ textTransform: 'uppercase' }}>
+                    {result.riskLevel} Risk
+                  </span>
                 </div>
               </div>
 
               {/* Summary */}
-              <div className="card" style={{ borderLeft: `4px solid ${riskColors[result.analysis.riskLevel]}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 800 }}>📝 Executive Summary</h4>
-                  <span className="badge" style={{
-                    background: `${riskColors[result.analysis.riskLevel]}15`,
-                    color: riskColors[result.analysis.riskLevel],
-                    fontWeight: 800
-                  }}>RISK: {result.analysis.riskLevel?.toUpperCase()}</span>
-                </div>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{result.analysis.summary}</p>
-              </div>
-
-              {/* Findings */}
               <div className="card">
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: 16 }}>🔍 Key Findings</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {result.analysis.findings?.map((f, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#fff', marginTop: 2 }}>✓</div>
-                      <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{f}</span>
-                    </div>
-                  ))}
+                <h4 style={{ color: 'var(--primary-light)', marginBottom: 10 }}>📋 Analysis Summary</h4>
+                <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>{result.insights}</p>
+              </div>
+
+              {/* Routines */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="card" style={{ borderTop: '3px solid #10b981' }}>
+                  <h4 style={{ color: '#10b981', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    🥗 Food Routine
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>{result.foodRoutine}</p>
+                </div>
+
+                <div className="card" style={{ borderTop: '3px solid #0ea5e9' }}>
+                  <h4 style={{ color: '#0ea5e9', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    🚶 Walking Routine
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', lineHeight: 1.5, color: 'var(--text-secondary)' }}>{result.walkRoutine}</p>
                 </div>
               </div>
 
-              {/* Recommendations */}
-              <div className="card" style={{ borderTop: '1px solid rgba(16,185,129,0.2)', background: 'linear-gradient(135deg, var(--bg-card), rgba(16,185,129,0.05))' }}>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: 16, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>💡</span> Clinical Recommendations
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {result.analysis.recommendations?.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: '#fff', marginTop: 2 }}>→</div>
-                      <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{r}</span>
-                    </div>
-                  ))}
-                </div>
+              {/* Precautions */}
+              <div className="card" style={{ borderLeft: '4px solid var(--danger)', background: 'rgba(239,68,68,0.05)' }}>
+                <h4 style={{ color: 'var(--danger)', marginBottom: 8 }}>⚠️ Precautions</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{result.precautions}</p>
               </div>
               
-              <button className="btn btn-outline btn-block" onClick={() => setResult(null)}>Reset Analysis</button>
+              <button className="btn btn-outline btn-block" onClick={() => setResult(null)}>Analyze Another Report</button>
             </div>
           ) : (
             <div className="card-glass" style={{ textAlign: 'center', padding: '100px 20px', opacity: 0.8 }}>

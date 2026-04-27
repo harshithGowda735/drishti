@@ -36,7 +36,8 @@ export const cancelAppointment = (id) => API.put(`/appointments/${id}/cancel`);
 // ─── Medical Records ──────────────────────────────────────────────────────────
 export const getPatientRecords = (patientId) => API.get(`/records/patient/${patientId}`);
 export const createRecord = (data) => API.post('/records', data);
-export const analyzeReport = (data) => API.post('/records/analyze', data);
+// ─── AI Analysis ─────────────────────────────────────────────────────────────
+export const analyzeReport = (data) => API.post('/ai/analyze', data);
 
 // ─── Real-time Crowd (Socket.io + REST) ──────────────────────────────────────
 export const getHospitalCrowd = (hospitalId) => API.get(`/crowd/${hospitalId}`);

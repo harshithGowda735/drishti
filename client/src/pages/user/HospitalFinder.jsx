@@ -20,9 +20,10 @@ export default function HospitalFinder() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       if (!loading && hospitals.length > 0) {
-        gsap.from(cardsRef.current?.children || [], {
-          y: 20, opacity: 0, stagger: 0.05, duration: 0.4, ease: 'power2.out'
-        });
+        gsap.fromTo(cardsRef.current?.children || [], 
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, stagger: 0.05, duration: 0.4, ease: 'power2.out' }
+        );
       }
     });
     return () => ctx.revert();
