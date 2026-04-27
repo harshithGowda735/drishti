@@ -60,22 +60,21 @@ export default function CrowdMonitor({ user }) {
       const res = await api.getHospital(hospitalId || '');
       if (res.data) {
         setHospital(res.data);
-        setCameras(res.data.cameras || []);
+        let cams = res.data.cameras || [];
+        // FORCE INJECT Waiting Room if empty
+        if (cams.length === 0) {
+          cams = [{ cameraId: 'CAM-LAPTOP-01', zone: 'Waiting Room', peopleCount: 0, density: 'low', lastUpdated: new Date() }];
+        }
+        setCameras(cams);
         setTotalCount(res.data.crowdCount || 0);
         setOverallDensity(res.data.crowdDensity || 'low');
         setLastUpdated(res.data.crowdLastUpdated);
       }
     } catch {
-      try {
-        const res = await api.getHospitals();
-        const h = res.data[0];
-        if (h) {
-          setHospital(h);
-          setCameras(h.cameras || []);
-          setTotalCount(h.crowdCount || 0);
-          setOverallDensity(h.crowdDensity || 'low');
-        }
-      } catch {}
+      // Fallback with mock if backend fails
+      const mockH = { _id: 'mock_id', name: 'HealthConnect Clinic' };
+      setHospital(mockH);
+      setCameras([{ cameraId: 'CAM-LAPTOP-01', zone: 'Waiting Room', peopleCount: 0, density: 'low', lastUpdated: new Date() }]);
     }
   };
 
@@ -111,6 +110,10 @@ export default function CrowdMonitor({ user }) {
         const count = people.length;
         
         setLocalCamCount(count);
+        // Instant UI Update for the Waiting Room card
+        setCameras(prev => prev.map(c => 
+          c.cameraId === 'CAM-LAPTOP-01' ? { ...c, peopleCount: count, density: count > 10 ? 'high' : count > 5 ? 'moderate' : 'low' } : c
+        ));
         
         // Update the backend
         if (hospital?._id) {
