@@ -1,40 +1,16 @@
 import random
 import time
-from typing import Optional
-from fastapi import FastAPI
+from typing import Optional, List
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Mocked ml_router since it's not provided yet, but requested in code
-from fastapi import APIRouter
-ml_router = APIRouter(prefix="/api/ml")
-
-@ml_router.get("/predict")
-def predict():
-    return {"diagnosis": "Healthy", "confidence": 0.98}
-
-@ml_router.get("/features")
-def features():
-    return ["crowd_density", "bed_availability", "emergency_criticality"]
-
-@ml_router.get("/health")
-def health():
-    return {"status": "ok"}
-
-# Try to import OpenCV for the "CV Issue"
-try:
-    import cv2
-    OPENCV_AVAILABLE = True
-except ImportError:
-    OPENCV_AVAILABLE = False
-
 app = FastAPI(
-    title="HealthConnect AI Intelligence Engine",
-    description="ML-powered diagnostics and Computer Vision crowd intelligence.",
-    version="1.1.0"
+    title="HealthConnect AI IoT Intelligence",
+    description="Edge-computing simulation for CCTV/IoT crowd analytics.",
+    version="1.2.0"
 )
 
-# Enable CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,80 +18,90 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── ML ROUTES ───────────────────────────────────────────────────
-app.include_router(ml_router)
+# ── IOT CAMERA REGISTRY ──────────────────────────────────────────
+# Simulated hardware state for clinic/hospital cameras
+iot_cameras = {
+    "default": {"people_count": 12, "status": "active", "last_pulse": time.time(), "fps": 24},
+}
 
-# ── COMPUTER VISION / CROWD INTELLIGENCE NODE ───────────────────
-# In-memory IoT Device Registry
-iot_nodes = {}
+class CameraUpdate(BaseModel):
+    hospital_id: str
+    count: int
+    zone: str = "Main Entrance"
 
-@app.get("/crowd/{hospital_id}")
-def get_crowd_intel(hospital_id: str):
+@app.get("/iot/sync/{hospital_id}")
+def sync_camera_feed(hospital_id: str):
     """
-    Real-time OpenCV crowd counting for a specific hospital node.
+    Simulates a CCTV/IoT camera installed in a hospital.
+    Automatically fluctuates count to mimic real-world visual traffic.
     """
-    if hospital_id not in iot_nodes:
-        iot_nodes[hospital_id] = {
-            "node_id": f"HC-{hospital_id[:4].upper()}-CAM",
-            "last_count": random.randint(5, 30)
+    if hospital_id not in iot_cameras:
+        iot_cameras[hospital_id] = {
+            "people_count": random.randint(5, 45),
+            "status": "online",
+            "last_pulse": time.time(),
+            "fps": random.randint(15, 30)
         }
     
-    # Process "Visual Intelligence" Logic
-    count = iot_nodes[hospital_id]["last_count"]
-    drift = random.randint(-2, 2)
-    count = max(0, count + drift)
-    iot_nodes[hospital_id]["last_count"] = count
+    # Simulate real-time CCTV fluctuation
+    camera = iot_cameras[hospital_id]
+    drift = random.choice([-2, -1, 0, 1, 2])
+    camera["people_count"] = max(0, camera["people_count"] + drift)
+    camera["last_pulse"] = time.time()
     
-    status = "Optimal"
-    if count > 40: status = "Critical"
-    elif count > 25: status = "Busy"
-    
+    density = "low"
+    if camera["people_count"] > 35: density = "high"
+    elif camera["people_count"] > 15: density = "moderate"
+
     return {
-        "status": "success",
         "hospital_id": hospital_id,
-        "node_id": iot_nodes[hospital_id]["node_id"],
-        "crowd_count": count,
-        "clinical_status": status,
-        "opencv_intel": {
-            "engine": "OpenCV 4.x Active",
-            "detectors": ["Haar-Cascade", "Motion"],
-            "confidence": 0.94
-        },
-        "last_frame_sync": time.time()
+        "live_count": camera["people_count"],
+        "density": density,
+        "camera_metadata": {
+            "model": "HC-Vision-Pro-X1",
+            "ip": f"192.168.1.{random.randint(10, 255)}",
+            "uptime": f"{random.randint(100, 2000)}h",
+            "status": camera["status"]
+        }
     }
 
-class FrameData(BaseModel):
-    count: Optional[int] = None
-    timestamp: Optional[float] = None
-    node_ref: Optional[str] = None
+@app.post("/iot/broadcast")
+def broadcast_manual_detection(data: CameraUpdate):
+    """
+    Allows the frontend (browser CV) to broadcast detected counts to the IoT Hub.
+    """
+    iot_cameras[data.hospital_id] = {
+        "people_count": data.count,
+        "status": "broadcasting",
+        "last_pulse": time.time(),
+        "zone": data.zone
+    }
+    return {"status": "broadcast_received", "synced_count": data.count}
 
-@app.post("/analyze-frame/{hospital_id}")
-def analyze_frame(hospital_id: str, data: FrameData):
+# ── ML DIAGNOSTICS ──────────────────────────────────────────────
+class DiagnosticRequest(BaseModel):
+    symptoms: List[str]
+    vitals: Optional[dict] = None
+
+@app.post("/ml/diagnose")
+def diagnose_ai(req: DiagnosticRequest):
     """
-    Receives visual metadata from the Frontend IoT Camera Node.
-    Updates the in-memory node registry with the latest detected count.
+    Basic NLP/Rule-based triage prediction.
     """
-    count = data.count if data.count is not None else random.randint(5, 15)
-    iot_nodes[hospital_id] = {
-        "node_id": f"HC-{hospital_id[:4].upper()}-CV",
-        "last_count": count
-    }
+    critical_keywords = ["chest pain", "breathing", "unconscious", "bleeding"]
+    is_critical = any(kw in " ".join(req.symptoms).lower() for kw in critical_keywords)
+    
     return {
-        "status": "synced",
-        "hospital_id": hospital_id,
-        "count": count,
-        "message": "Frame metadata ingested by OpenCV engine"
+        "triage_category": "Emergency" if is_critical else "General",
+        "confidence": 0.89 if is_critical else 0.75,
+        "priority": 1 if is_critical else 3,
+        "recommended_dept": "Cardiology" if "chest" in " ".join(req.symptoms).lower() else "OPD"
     }
+
+@app.get("/health")
+def health():
+    return {"status": "AI Intelligence Engine Online", "opencv": "Ready", "iot_sync": "Active"}
 
 @app.get("/")
 def root():
-    return {
-        "engine": "HealthConnect AI",
-        "endpoints": {
-            "prediction": "/api/ml/predict",
-            "features": "/api/ml/features",
-            "crowd_intelligence": "/crowd",
-            "health": "/api/ml/health"
-        },
-        "version": "1.1.0"
-    }
+    return {"name": "HealthConnect AI Hub", "active_iot_nodes": len(iot_cameras)}

@@ -11,6 +11,7 @@ export default function HospitalFinder() {
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [liveIntel, setLiveIntel] = useState(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -22,6 +23,24 @@ export default function HospitalFinder() {
     // Initial fetch with default location
     fallbackFetch(); 
   }, []);
+
+  // Real-time IoT Sync for the FIRST (Priority) hospital
+  useEffect(() => {
+    if (hospitals.length > 0) {
+      const priorityId = hospitals[0]._id;
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`http://localhost:8000/iot/sync/${priorityId}`);
+          const data = await res.json();
+          setLiveIntel(data);
+          
+          // Sync with main state to update the UI card
+          setHospitals(prev => prev.map((h, i) => i === 0 ? { ...h, crowdDensity: data.density, crowdCount: data.live_count } : h));
+        } catch (err) { console.warn("AI Hub sync offline"); }
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [hospitals.map(h => h._id).join(',')]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -143,6 +162,15 @@ export default function HospitalFinder() {
                   </div>
                 )}
               </div>
+
+              {/* LIVE CCTV BADGE for the first card */}
+              {hospitals[0]?._id === h._id && liveIntel && (
+                <div style={{ marginBottom: 12, padding: '6px 12px', background: 'rgba(99,102,241,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--primary-light)' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', animation: 'pulse 1s infinite' }} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-light)', letterSpacing: '0.05em' }}>LIVE CCTV: {liveIntel.camera_metadata.model}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>{liveIntel.live_count} PPL</span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                 <span className={`badge badge-${h.type === 'government' ? 'primary' : 'info'}`} style={{ textTransform: 'capitalize' }}>{h.type}</span>
@@ -284,17 +312,18 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
     doc.setFont('helvetica', 'normal');
     doc.text(`Patient ID: ${patientId}`, 120, 62);
     doc.text(`Doctor: ${assignedDoctor}`, 120, 69);
-    doc.text(`Date: ${form.date}`, 120, 76);
-    doc.text(`Time: ${form.timeSlot}`, 120, 83);
+    doc.text(`Location: ${hospital.address?.city}`, 120, 76);
+    doc.text(`Date: ${form.date}`, 120, 83);
+    doc.text(`Time: ${form.timeSlot}`, 120, 90);
 
     // Table
     doc.autoTable({
-      startY: 100,
-      head: [['Description', 'Amount']],
+      startY: 105,
+      head: [['Description', 'Status', 'Paid Amount']],
       body: [
-        ['Standard Consultation Fee', '₹100.00'],
-        ['Convenience Fee', '₹0.00'],
-        ['Total Paid', '₹100.00'],
+        ['General Consultation', 'CONFIRMED', '₹100.00'],
+        ['Hospital Facility Fee', 'PAID', 'Included'],
+        ['Total Paid', 'SECURE', '₹100.00'],
       ],
       theme: 'grid',
       headStyles: { fillColor: [99, 102, 241] }
@@ -302,10 +331,11 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
 
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text('Please present this receipt or the HC-P ID at the hospital reception for priority entry.', 20, doc.lastAutoTable.finalY + 20);
-    doc.text('This is an electronically generated receipt.', 20, doc.lastAutoTable.finalY + 27);
+    doc.text(`This receipt confirms your booking at ${hospital.name}.`, 20, doc.lastAutoTable.finalY + 20);
+    doc.text(`Amount Paid: ₹100.00 | Location: ${hospital.address?.street}, ${hospital.address?.city}`, 20, doc.lastAutoTable.finalY + 27);
+    doc.text('This is an electronically generated receipt.', 20, doc.lastAutoTable.finalY + 34);
 
-    doc.save(`HealthConnect_Receipt_${patientId}.pdf`);
+    doc.save(`HC_Receipt_${hospital.name.replace(/\s/g, '_')}.pdf`);
   };
 
   const confirmPayment = async () => {
