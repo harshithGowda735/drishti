@@ -19,15 +19,16 @@ export default function HospitalFinder() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      if (!loading && hospitals.length > 0) {
-        gsap.fromTo(cardsRef.current?.children || [], 
+      const targets = gsap.utils.toArray(cardsRef.current?.children || []);
+      if (!loading && targets.length > 0) {
+        gsap.fromTo(targets, 
           { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, stagger: 0.05, duration: 0.4, ease: 'power2.out' }
+          { y: 0, opacity: 1, stagger: 0.05, duration: 0.4, ease: 'power2.out', overwrite: 'auto' }
         );
       }
     });
     return () => ctx.revert();
-  }, [loading, filter]);
+  }, [loading, filter, hospitals.length]);
 
   const fetchHospitals = async () => {
     setLoading(true);
@@ -248,15 +249,33 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
   };
 
   const confirmPayment = async () => {
+    if (!form.department || !form.date || !form.timeSlot) {
+      alert("Please fill all required fields");
+      setPaymentStep(false);
+      return;
+    }
+
     setLoading(true);
     try {
+      // Normalize date to YYYY-MM-DD to avoid timezone shifts
+      const normalizedDate = new Date(form.date).toISOString().split('T')[0];
+      
       const res = await api.bookAppointment({
-        hospital: hospital._id, department: form.department, date: form.date,
-        timeSlot: form.timeSlot, type: form.type, symptoms: form.symptoms ? form.symptoms.split(',').map(s => s.trim()) : [],
-        isPaid: true, fee: 100
+        hospital: hospital._id, 
+        department: form.department, 
+        date: normalizedDate,
+        timeSlot: form.timeSlot, 
+        type: form.type || 'regular', 
+        symptoms: form.symptoms ? form.symptoms.split(',').map(s => s.trim()) : [],
+        isPaid: true, 
+        fee: 100,
+        doctor: assignedDoctor // Include the assigned doctor
       });
       setSuccess(res.data);
-    } catch (err) { alert(err.response?.data?.message || 'Booking failed'); }
+    } catch (err) { 
+      console.error("Booking Error:", err);
+      alert(err.response?.data?.message || 'Booking failed. Please try again.'); 
+    }
     setLoading(false);
   };
 

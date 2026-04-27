@@ -18,10 +18,15 @@ export default function Analytics() {
   ]);
 
   useEffect(() => {
+    const ctx = gsap.context(() => {
+      const bars = gsap.utils.toArray('.card-glass, .card');
+      if (bars.length > 0) {
+        gsap.from(bars, { y: 30, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' });
+      }
+    });
+
     const interval = setInterval(() => {
-      // Simulate real-time fluctuations
       setLivePatients(prev => prev + (Math.random() > 0.5 ? 1 : -1));
-      
       setDeptLoads(prev => prev.map(d => ({
         ...d,
         load: Math.min(100, Math.max(10, d.load + (Math.random() > 0.5 ? 2 : -2))),
@@ -41,7 +46,10 @@ export default function Analytics() {
       }
     }, 4000);
 
-    return () => clearInterval(interval);
+    return () => {
+      ctx.revert();
+      clearInterval(interval);
+    };
   }, []);
 
   return (
