@@ -115,18 +115,19 @@ export default function CrowdMonitor({ user }) {
         // Update the backend
         if (hospital?._id) {
           // Standard Node.js Backend Update
+          const zoneToUpdate = 'Waiting Room'; // Map scanner to Waiting Room
           api.updateCrowdData({
             hospitalId: hospital._id,
             cameraId: 'CAM-LAPTOP-01',
-            zone: 'AI Scanner',
+            zone: zoneToUpdate,
             peopleCount: count
           }).catch(() => {});
 
           // HealthConnect AI Intelligence Engine Sync (FastAPI)
-          fetch(`http://localhost:8000/analyze-frame/${hospital._id}`, {
+          fetch(`http://localhost:8000/iot/broadcast`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ count: count, node_ref: 'LAPTOP-WEBCAM-NODE' })
+            body: JSON.stringify({ hospital_id: hospital._id, count: count, zone: zoneToUpdate })
           }).catch(() => {});
         }
 
@@ -202,8 +203,8 @@ export default function CrowdMonitor({ user }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
-          <h1>👥 Crowd Monitoring</h1>
-          <p>Real-time OpenCV + Haar Cascade People Analytics</p>
+          <h1>👥 Live Crowd Analytics</h1>
+          <p>Real-time AI Visual Intelligence & Zone Flow</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 20, background: isConnected ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.08)', border: `1px solid ${isConnected ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.2)'}` }}>
@@ -217,8 +218,8 @@ export default function CrowdMonitor({ user }) {
       <div className="card" style={{ marginBottom: 24, padding: 20, border: scanning ? '2px solid var(--danger)' : '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>💻 Laptop AI Scanner</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Scan crowd directly through your workstation camera</p>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>🔬 Precision AI Hub (CCTV Mode)</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Using Laptop Camera to simulate Clinic/Waiting Room CCTV Feed</p>
           </div>
           <button className={`btn ${scanning ? 'btn-danger' : 'btn-primary'}`} onClick={toggleScanner}>
             {scanning ? '🛑 Stop Scanner' : '📷 Start AI Scanner'}
@@ -291,8 +292,8 @@ export default function CrowdMonitor({ user }) {
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>PEOPLE</div>
                       </div>
                       <div style={{ background: 'var(--bg-surface)', padding: '12px 8px', borderRadius: 10, textAlign: 'center', border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-light)', marginTop: 8 }}>{cam.detectionModel || 'HOG+SVM'}</div>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>CV MODEL</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-light)', marginTop: 8 }}>{cam.cameraId === 'CAM-LAPTOP-01' ? 'COCO-SSD (AI)' : 'Haar-Cascade'}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>CV ENGINE</div>
                       </div>
                     </div>
                   </div>
