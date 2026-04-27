@@ -27,6 +27,13 @@ export default function Login({ onLogin }) {
     );
   }, []);
 
+  // Shake animation for error box when it appears
+  useEffect(() => {
+    if (error) {
+      gsap.fromTo('.error-box', { x: -10 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
+    }
+  }, [error]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -41,7 +48,6 @@ export default function Login({ onLogin }) {
       navigate(routes[res.data.role] || '/user');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong');
-      gsap.fromTo('.error-box', { x: -10 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
     }
     setLoading(false);
   };

@@ -6,6 +6,9 @@ export default function AIAnalysis() {
   const [reportType, setReportType] = useState('blood_test');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
   const leftColRef = useRef(null);
   const rightColRef = useRef(null);
 
@@ -24,10 +27,11 @@ export default function AIAnalysis() {
   ];
 
   const handleAnalyze = async () => {
+    if (!file) { alert('Please select a report file first'); return; }
     setLoading(true);
     setResult(null);
     try {
-      const res = await api.analyzeReport({ reportType });
+      const res = await api.analyzeReport({ reportType, fileName: file.name });
       setResult(res.data);
       // Animation for results appearance
       setTimeout(() => {
@@ -38,6 +42,27 @@ export default function AIAnalysis() {
       }, 100);
     } catch { alert('Analysis failed'); }
     setLoading(false);
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) setFile(droppedFile);
+  };
+
+  const onFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) setFile(selectedFile);
   };
 
   const riskColors = { low: 'var(--success)', moderate: 'var(--warning)', high: 'var(--danger)', critical: '#dc2626' };
@@ -71,14 +96,48 @@ export default function AIAnalysis() {
             ))}
           </div>
 
-          <div style={{
-            border: '2px dashed var(--border)', borderRadius: 'var(--radius)', padding: '40px 20px',
-            textAlign: 'center', marginBottom: 24, cursor: 'pointer',
-            background: 'rgba(255,255,255,0.02)', transition: 'var(--transition)'
-          }} className="card-hover">
-            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📂</div>
-            <p style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4 }}>Drop report file here</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supported: PDF, JPG, PNG (Max 10MB)</p>
+          <div 
+            onClick={() => fileInputRef.current.click()}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            style={{
+              border: `2px dashed ${isDragging ? 'var(--primary-light)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius)', 
+              padding: '40px 20px',
+              textAlign: 'center', 
+              marginBottom: 24, 
+              cursor: 'pointer',
+              background: isDragging ? 'rgba(99,102,241,0.05)' : 'rgba(255,255,255,0.02)',
+              transition: 'var(--transition)',
+              position: 'relative'
+            }} 
+            className="card-hover">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={onFileChange} 
+              hidden 
+              accept=".pdf,.jpg,.jpeg,.png"
+            />
+            {file ? (
+              <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📄</div>
+                <p style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary-light)' }}>{file.name}</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                  style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Remove file
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📂</div>
+                <p style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4 }}>Drop report file here</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supported: PDF, JPG, PNG (Max 10MB)</p>
+              </>
+            )}
           </div>
 
           <button className="btn btn-primary btn-block btn-lg" onClick={handleAnalyze} disabled={loading}>
