@@ -218,20 +218,9 @@ export default function CrowdMonitor({ user }) {
         </div>
 
         {scanning && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', height: 300 }}>
-              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
-              <div className="scanline" />
-              <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(239,68,68,0.8)', color: 'white', padding: '4px 8px', borderRadius: 6, fontSize: '0.65rem', fontWeight: 800 }}>LIVE TENSORFLOW.JS FEED</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-surface)', borderRadius: 12 }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>COCO-SSD PRECISION MODEL</div>
-              <div style={{ fontSize: '4.5rem', fontWeight: 900, color: 'var(--danger)' }}>{localCamCount}</div>
-              <div style={{ fontSize: '1rem', fontWeight: 700 }}>PEOPLE PRECISELY DETECTED</div>
-              <div style={{ marginTop: 12, fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800 }}>SYNCING WITH PRECISION...</div>
-              {!model && <div style={{ marginTop: 20, color: 'var(--warning)', fontSize: '0.8rem' }}>⌛ Initializing AI Model...</div>}
-            </div>
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: 16, marginBottom: 20, textAlign: 'center' }}>
+             <span style={{ fontWeight: 800, color: 'var(--danger)' }}>⚠️ AI WEBCAM SCANNER ACTIVE:</span> Point your camera at people to see precision detection in the "Live Zone Feeds" grid below.
+             {!model && <span style={{ marginLeft: 10, color: 'var(--warning)' }}>⌛ Loading AI Model...</span>}
           </div>
         )}
       </div>
@@ -254,21 +243,31 @@ export default function CrowdMonitor({ user }) {
                 const cfg = densityCfg[cam.density] || densityCfg.low;
                 return (
                   <div key={cam.cameraId} className="card" style={{ borderTop: `4px solid ${cfg.color}`, padding: 16 }}>
-                    {/* Simulated camera feed */}
-                    <div style={{ background: '#050810', borderRadius: 10, padding: '24px 16px', textAlign: 'center', marginBottom: 16, position: 'relative', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                    {/* Simulated or Real camera feed */}
+                    <div style={{ background: '#050810', borderRadius: 10, padding: '24px 16px', textAlign: 'center', marginBottom: 16, position: 'relative', border: '1px solid var(--border)', overflow: 'hidden', height: 160 }}>
                       <div className="scanline" />
-                      <div style={{ position: 'absolute', top: 8, left: 10, display: 'flex', alignItems: 'center', gap: 6, zIndex: 1 }}>
+                      
+                      {/* Show real webcam feed if it's the Admin Scanner cam */}
+                      {scanning && cam.cameraId === 'CAM-LAPTOP-01' ? (
+                        <div style={{ position: 'absolute', inset: 0 }}>
+                          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+                        </div>
+                      ) : (
+                        <div style={{ position: 'relative', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flexWrap: 'wrap', marginTop: 20 }}>
+                          {Array.from({ length: Math.min(cam.peopleCount, 15) }).map((_, i) => (
+                            <div key={i} style={{ width: 14, height: 26, border: '1px solid #00ff41', borderRadius: 4, background: 'rgba(0,255,65,0.05)', animation: 'fadeIn 0.5s ease' }} />
+                          ))}
+                          {cam.peopleCount > 15 && <span style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: '0.7rem' }}>+{cam.peopleCount - 15}</span>}
+                        </div>
+                      )}
+
+                      <div style={{ position: 'absolute', top: 8, left: 10, display: 'flex', alignItems: 'center', gap: 6, zIndex: 1, background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: 4 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite' }} />
                         <span style={{ fontSize: '0.65rem', color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>{cam.cameraId} • LIVE</span>
                       </div>
                       
-                      <div style={{ position: 'relative', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
-                        {Array.from({ length: Math.min(cam.peopleCount, 15) }).map((_, i) => (
-                          <div key={i} style={{ width: 14, height: 26, border: '1px solid #00ff41', borderRadius: 4, background: 'rgba(0,255,65,0.05)', animation: 'fadeIn 0.5s ease' }} />
-                        ))}
-                        {cam.peopleCount > 15 && <span style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: '0.7rem' }}>+{cam.peopleCount - 15}</span>}
-                      </div>
-                      <div style={{ position: 'absolute', bottom: 6, right: 8, fontSize: '0.6rem', color: '#555', fontFamily: 'monospace' }}>
+                      <div style={{ position: 'absolute', bottom: 6, right: 8, fontSize: '0.6rem', color: '#555', fontFamily: 'monospace', zIndex: 1 }}>
                         {new Date(cam.lastUpdated || Date.now()).toLocaleTimeString()}
                       </div>
                     </div>
