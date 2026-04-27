@@ -38,8 +38,8 @@ export default function UserDashboard({ user }) {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { force3D: true } });
       tl.fromTo(bannerRef.current, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power2.out' })
-        .fromTo(actionsRef.current?.children || [], { y: 15, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.04, duration: 0.35, ease: 'power2.out' }, '-=0.25')
-        .fromTo(summaryRef.current?.children || [], { y: 15, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08, duration: 0.4, ease: 'power2.out' }, '-=0.2');
+        .fromTo(gsap.utils.toArray(actionsRef.current?.children || []), { y: 15, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.04, duration: 0.35, ease: 'power2.out' }, '-=0.25')
+        .fromTo(gsap.utils.toArray(summaryRef.current?.children || []), { y: 15, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.08, duration: 0.4, ease: 'power2.out' }, '-=0.2');
     });
     return () => ctx.revert();
   }, []);
