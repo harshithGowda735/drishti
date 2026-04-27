@@ -227,15 +227,7 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
   const [paymentStep, setPaymentStep] = useState(false);
-  const modalRef = useRef(null);
   const assignedDoctor = "Dr. Sarah Wilson"; // Mocked for demo
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(modalRef.current, { y: 40, opacity: 0, duration: 0.4, ease: 'power3.out' });
-    });
-    return () => ctx.revert();
-  }, []);
 
   useEffect(() => {
     if (form.date && form.department) {
@@ -391,7 +383,7 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900 }}>📅 Book Appointment</h2>
           <button className="btn btn-ghost" onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', padding: 0 }}>✕</button>
