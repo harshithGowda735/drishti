@@ -58,6 +58,16 @@ exports.bookAppointment = async (req, res) => {
     ]);
 
     console.log(`✅ Appointment booked: ${appointment._id}`);
+    
+    // Emit real-time update to hospital
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`hospital_${hospital}`).emit('appointment_update', {
+        type: 'new_booking',
+        appointment: populated
+      });
+    }
+
     res.status(201).json(populated);
   } catch (error) {
     console.error(`❌ Booking Error: ${error.message}`);

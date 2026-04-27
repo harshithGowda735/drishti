@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import * as api from '../../services/api';
 
 const crowdColors = { low: '#10b981', moderate: '#f59e0b', high: '#ef4444', very_high: '#dc2626' };
@@ -248,6 +250,56 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
     setPaymentStep(true);
   };
 
+  const generateReceiptPDF = () => {
+    if (!success) return;
+    const doc = new jsPDF();
+    const patientId = `HC-P-${Math.floor(Math.random()*10000)}`;
+
+    // Add Branding
+    doc.setFillColor(99, 102, 241);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.text('HEALTHCONNECT RECEIPT', 20, 25);
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hospital Information:', 20, 55);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${hospital.name}`, 20, 62);
+    doc.text(`${hospital.address?.street}, ${hospital.address?.city}`, 20, 69);
+    doc.text(`Contact: ${hospital.phone}`, 20, 76);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Appointment Details:', 120, 55);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Patient ID: ${patientId}`, 120, 62);
+    doc.text(`Doctor: ${assignedDoctor}`, 120, 69);
+    doc.text(`Date: ${form.date}`, 120, 76);
+    doc.text(`Time: ${form.timeSlot}`, 120, 83);
+
+    // Table
+    doc.autoTable({
+      startY: 100,
+      head: [['Description', 'Amount']],
+      body: [
+        ['Standard Consultation Fee', '₹100.00'],
+        ['Convenience Fee', '₹0.00'],
+        ['Total Paid', '₹100.00'],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [99, 102, 241] }
+    });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Please present this receipt or the HC-P ID at the hospital reception for priority entry.', 20, doc.lastAutoTable.finalY + 20);
+    doc.text('This is an electronically generated receipt.', 20, doc.lastAutoTable.finalY + 27);
+
+    doc.save(`HealthConnect_Receipt_${patientId}.pdf`);
+  };
+
   const confirmPayment = async () => {
     if (!form.department || !form.date || !form.timeSlot) {
       alert("Please fill all required fields");
@@ -300,7 +352,14 @@ function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
               Scan QR at hospital for instant entry
             </div>
           </div>
-          <button className="btn btn-primary btn-block btn-lg" onClick={onClose}>Finish</button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-outline btn-block" style={{ flex: 1 }} onClick={generateReceiptPDF}>
+              📄 Download PDF
+            </button>
+            <button className="btn btn-primary btn-block" style={{ flex: 1.5 }} onClick={onClose}>
+              Finish
+            </button>
+          </div>
         </div>
       </div>
     );

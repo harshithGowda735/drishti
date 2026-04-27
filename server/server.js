@@ -36,8 +36,14 @@ io.on('connection', (socket) => {
   socket.on('new_emergency', (data) => {
     const { hospitalId } = data;
     console.log(`🚑 EMERGENCY ALERT for hospital_${hospitalId}`);
-    // Broadcast to all clients in the hospital's room (staff/admin)
     io.to(`hospital_${hospitalId}`).emit('emergency_alert', data);
+  });
+
+  // Handle new regular appointment
+  socket.on('new_appointment', (data) => {
+    const { hospitalId } = data;
+    console.log(`📅 NEW APPOINTMENT for hospital_${hospitalId}`);
+    io.to(`hospital_${hospitalId}`).emit('appointment_update', data);
   });
 
   socket.on('disconnect', () => {
