@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { getSocket, joinHospitalRoom, leaveHospitalRoom } from '../../services/socket';
 import * as api from '../../services/api';
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import '@tensorflow/tfjs';
 
 const densityCfg = {
   low:       { color: '#10b981', bg: 'rgba(16,185,129,0.15)',  label: 'Low',       emoji: '🟢' },
@@ -26,6 +28,15 @@ export default function CrowdMonitor({ user }) {
   const [scanning, setScanning] = useState(false);
   const [localCamCount, setLocalCamCount] = useState(0);
   const [stream, setStream] = useState(null);
+  const [model, setModel] = useState(null);
+
+  useEffect(() => {
+    // Load AI Model
+    cocoSsd.load().then(m => {
+      setModel(m);
+      console.log('🤖 AI Model Loaded');
+    });
+  }, []);
 
   useEffect(() => {
     if (!hospitalId) return;
@@ -87,25 +98,51 @@ export default function CrowdMonitor({ user }) {
   };
 
   const startAutoScan = () => {
-    const interval = setInterval(() => {
-      if (!scanning) {
-        clearInterval(interval);
+    const interval = setInterval(async () => {
+      if (!scanning || !model || !videoRef.current) {
+        if (!scanning) clearInterval(interval);
         return;
       }
-      // Simulate OpenCV detection on the frame
-      const fakeCount = Math.floor(Math.random() * 8) + 2; 
-      setLocalCamCount(fakeCount);
-      
-      // Update the backend with local camera data
-      if (hospital?._id) {
-        api.updateCrowdData({
-          hospitalId: hospital._id,
-          cameraId: 'CAM-LAPTOP-01',
-          zone: 'Admin Scanner',
-          peopleCount: fakeCount
-        }).catch(() => {});
+
+      try {
+        // Real AI Detection
+        const predictions = await model.detect(videoRef.current);
+        const people = predictions.filter(p => p.class === 'person' && p.score > 0.5);
+        const count = people.length;
+        
+        setLocalCamCount(count);
+        
+        // Update the backend
+        if (hospital?._id) {
+          api.updateCrowdData({
+            hospitalId: hospital._id,
+            cameraId: 'CAM-LAPTOP-01',
+            zone: 'AI Scanner',
+            peopleCount: count
+          }).catch(() => {});
+        }
+
+        // Draw detection boxes for demo effect
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          canvasRef.current.width = videoRef.current.videoWidth;
+          canvasRef.current.height = videoRef.current.videoHeight;
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          ctx.strokeStyle = '#00FF41';
+          ctx.lineWidth = 4;
+          ctx.fillStyle = '#00FF41';
+          ctx.font = '18px Arial';
+
+          people.forEach(p => {
+            const [x, y, w, h] = p.bbox;
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillText(`PERSON ${Math.round(p.score * 100)}%`, x, y > 20 ? y - 10 : 20);
+          });
+        }
+      } catch (err) {
+        console.error('AI Detection Error:', err);
       }
-    }, 3000);
+    }, 2000);
   };
 
   useEffect(() => {
@@ -182,17 +219,18 @@ export default function CrowdMonitor({ user }) {
 
         {scanning && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', height: 200 }}>
+            <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', height: 300 }}>
               <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
+              <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
               <div className="scanline" />
-              <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(239,68,68,0.8)', color: 'white', padding: '4px 8px', borderRadius: 6, fontSize: '0.65rem', fontWeight: 800 }}>LIVE WEBCAM FEED</div>
+              <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(239,68,68,0.8)', color: 'white', padding: '4px 8px', borderRadius: 6, fontSize: '0.65rem', fontWeight: 800 }}>LIVE TENSORFLOW.JS FEED</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-surface)', borderRadius: 12 }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>OPENCV DETECTION</div>
-              <div style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--danger)' }}>{localCamCount}</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>PEOPLE IN VIEW</div>
-              <div style={{ marginTop: 12, fontSize: '0.65rem', color: 'var(--success)', fontWeight: 800 }}>AUTO-SYNCING TO SERVER...</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>COCO-SSD PRECISION MODEL</div>
+              <div style={{ fontSize: '4.5rem', fontWeight: 900, color: 'var(--danger)' }}>{localCamCount}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 700 }}>PEOPLE PRECISELY DETECTED</div>
+              <div style={{ marginTop: 12, fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800 }}>SYNCING WITH PRECISION...</div>
+              {!model && <div style={{ marginTop: 20, color: 'var(--warning)', fontSize: '0.8rem' }}>⌛ Initializing AI Model...</div>}
             </div>
           </div>
         )}
