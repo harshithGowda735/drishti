@@ -1,0 +1,13 @@
+# HealthConnect ML Services — Requirements
+# Install with: pip install -r requirements.txt
+
+# Core — OpenCV HOG+SVM people detector (no external model needed)
+opencv-python>=4.8.0      # Includes HOGDescriptor + getDefaultPeopleDetector
+numpy>=1.24.0
+
+# API management server
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# HTTP client (pushes counts to Node.js backend)
+requests>=2.31.0
