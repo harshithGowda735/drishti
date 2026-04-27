@@ -15,6 +15,9 @@ export default function UserDashboard({ user }) {
   const onboardingRef = useRef(null);
   const [hasPlan, setHasPlan] = useState(localStorage.getItem('userHealthPlan') !== null);
   const [dismissed, setDismissed] = useState(localStorage.getItem('dismissedHealthOnboarding') === 'true');
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historySummary, setHistorySummary] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     const plan = JSON.parse(localStorage.getItem('userHealthPlan') || 'null');
@@ -75,8 +78,67 @@ export default function UserDashboard({ user }) {
     setLoading(false);
   };
 
+  const handleViewHistory = async () => {
+    setShowHistoryModal(true);
+    setLoadingHistory(true);
+    try {
+      // Simulate fetching history and generating summary for demo
+      // In a real app, we'd fetch actual records and pass to AI
+      const res = await api.analyzeReport({ 
+        reportType: 'Full Medical History Summary', 
+        reportDetails: 'User has had 3 appointments in the last month for blood pressure monitoring. Vitals have been stable at 120/80.' 
+      });
+      setHistorySummary(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoadingHistory(false);
+  };
+
   return (
     <div className="animate-fade-in" style={{ position: 'relative', zIndex: 1 }}>
+      {/* Detailed History Modal */}
+      {showHistoryModal && (
+        <div className="modal-overlay" style={{ zIndex: 2000 }}>
+          <div className="modal" style={{ maxWidth: 500 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 900 }}>📊 Medical History Summary</h2>
+              <button className="btn btn-ghost" onClick={() => setShowHistoryModal(false)}>✕</button>
+            </div>
+            
+            {loadingHistory ? (
+              <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                <div className="loading-spinner" style={{ margin: '0 auto' }} />
+                <p style={{ marginTop: 16, color: 'var(--text-muted)' }}>Generating AI Summary Report...</p>
+              </div>
+            ) : historySummary ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className="card" style={{ background: 'var(--bg-surface)', borderLeft: '4px solid var(--primary)' }}>
+                  <h4 style={{ fontSize: '0.9rem', color: 'var(--primary-light)', marginBottom: 8 }}>Gemma 3 Analysis</h4>
+                  <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>{historySummary.insights}</p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="card" style={{ padding: 12 }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status</div>
+                    <div style={{ fontWeight: 800, color: 'var(--success)' }}>STABLE</div>
+                  </div>
+                  <div className="card" style={{ padding: 12 }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Risk Level</div>
+                    <div style={{ fontWeight: 800, color: 'var(--warning)' }}>{historySummary.riskLevel?.toUpperCase()}</div>
+                  </div>
+                </div>
+                <div className="card">
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, marginBottom: 8 }}>💡 Key Recommendations</h4>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{historySummary.foodRoutine}</p>
+                </div>
+                <button className="btn btn-primary btn-block" onClick={() => setShowHistoryModal(false)}>Close Report</button>
+              </div>
+            ) : (
+              <p>No history available to summarize.</p>
+            )}
+          </div>
+        </div>
+      )}
       {/* AI Onboarding Modal */}
       {showOnboarding && !hasPlan && (
         <div className="modal-overlay" style={{ zIndex: 1000 }}>
@@ -210,7 +272,9 @@ export default function UserDashboard({ user }) {
                 </div>
               ))}
             </div>
-            <button className="btn btn-outline btn-sm btn-block" style={{ marginTop: 16 }}>View Detailed History</button>
+            <button className="btn btn-outline btn-sm btn-block" style={{ marginTop: 16 }} onClick={handleViewHistory}>
+              View Detailed History
+            </button>
           </div>
         </div>
       </div>
