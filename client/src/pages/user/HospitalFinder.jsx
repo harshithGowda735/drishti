@@ -31,13 +31,36 @@ export default function HospitalFinder() {
 
   const fetchHospitals = async () => {
     setLoading(true);
+    
+    // Attempt to get user location
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await api.smartFind({ lat: latitude, lng: longitude });
+          setHospitals(res.data);
+        } catch {
+          await fallbackFetch();
+        }
+        setLoading(false);
+      }, async (error) => {
+        console.warn("Geolocation error:", error.message);
+        await fallbackFetch();
+        setLoading(false);
+      });
+    } else {
+      await fallbackFetch();
+      setLoading(false);
+    }
+  };
+
+  const fallbackFetch = async () => {
     try {
       const res = await api.smartFind({ lat: 12.9716, lng: 77.5946 });
       setHospitals(res.data);
     } catch {
       try { const res = await api.getHospitals(); setHospitals(res.data); } catch {}
     }
-    setLoading(false);
   };
 
   const filtered = hospitals.filter(h => {
