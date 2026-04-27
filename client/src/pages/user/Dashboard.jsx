@@ -8,6 +8,25 @@ export default function UserDashboard({ user }) {
   const bannerRef = useRef(null);
   const actionsRef = useRef(null);
   const summaryRef = useRef(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [medicalInfo, setMedicalInfo] = useState('');
+  const [aiPlan, setAiPlan] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const onboardingRef = useRef(null);
+  const [hasPlan, setHasPlan] = useState(localStorage.getItem('userHealthPlan') !== null);
+  const [dismissed, setDismissed] = useState(localStorage.getItem('dismissedHealthOnboarding') === 'true');
+
+  useEffect(() => {
+    const plan = JSON.parse(localStorage.getItem('userHealthPlan') || 'null');
+    if (plan) setAiPlan(plan);
+    else if (!dismissed) setShowOnboarding(true);
+  }, [dismissed]);
+
+  const handleSkip = () => {
+    localStorage.setItem('dismissedHealthOnboarding', 'true');
+    setDismissed(true);
+    setShowOnboarding(false);
+  };
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -38,13 +57,58 @@ export default function UserDashboard({ user }) {
     { icon: '💤', tip: 'Sleep 7-8 hours tonight', time: '10:00 PM' },
   ];
 
+  const handleSaveHealthProfile = async () => {
+    if (!medicalInfo) return;
+    setLoading(true);
+    try {
+      const res = await api.analyzeReport({ 
+        reportType: 'General Health Profile', 
+        reportDetails: medicalInfo 
+      });
+      setAiPlan(res.data);
+      localStorage.setItem('userHealthPlan', JSON.stringify(res.data));
+      setShowOnboarding(false);
+      setHasPlan(true);
+    } catch (err) {
+      alert('Failed to generate health plan. Please try again.');
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="animate-fade-in" style={{ position: 'relative', zIndex: 1 }}>
+      {/* AI Onboarding Modal */}
+      {showOnboarding && !hasPlan && (
+        <div className="modal-overlay" style={{ zIndex: 1000 }}>
+          <div ref={onboardingRef} className="modal" style={{ maxWidth: 450, textAlign: 'center' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>🏥</div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: 8 }}>Complete Your Health Profile</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.9rem' }}>
+              Tell us about any symptoms or medical history so Gemma 3 AI can suggest the best food and exercise plan for you.
+            </p>
+            <textarea 
+              className="input-field" 
+              placeholder="e.g. I have diabetes and high blood pressure..."
+              style={{ minHeight: 120, marginBottom: 20, resize: 'none' }}
+              value={medicalInfo}
+              onChange={e => setMedicalInfo(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={handleSkip}>Maybe Later</button>
+              <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleSaveHealthProfile} disabled={loading}>
+                {loading ? 'Consulting AI...' : 'Generate My Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Banner */}
       <div ref={bannerRef} className="card-glass" style={{
         background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)', padding: '32px 28px',
         marginBottom: 28, position: 'relative', overflow: 'hidden', border: 'none'
       }}>
+        {/* ... existing banner content ... */}
         <div className="float-anim" style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
         <div className="float-anim-rev" style={{ position: 'absolute', bottom: -40, right: 60, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -53,6 +117,25 @@ export default function UserDashboard({ user }) {
           <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Welcome to your health dashboard. Your health, our priority.</p>
         </div>
       </div>
+
+      {/* AI Health Plan (New) */}
+      {aiPlan && (
+        <div className="stagger" style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#10b981' }}>✨</span> Personalized AI Health Plan
+          </h2>
+          <div className="card-glass" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, padding: 24, border: '1px solid rgba(16,185,129,0.2)' }}>
+            <div style={{ borderLeft: '4px solid #10b981', paddingLeft: 16 }}>
+              <h4 style={{ color: '#10b981', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>🥗 Food Routine</h4>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{aiPlan.foodRoutine}</p>
+            </div>
+            <div style={{ borderLeft: '4px solid #0ea5e9', paddingLeft: 16 }}>
+              <h4 style={{ color: '#0ea5e9', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>🚶 Walk & Activity</h4>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{aiPlan.walkRoutine}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
