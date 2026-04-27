@@ -110,8 +110,8 @@ class PeopleDetector:
         self.hog_conf   = hog_confidence
         self.nms_thresh = nms_overlap
 
-        print(f"[OK]   Upper Body Haar Cascade loaded  → seated + standing")
-        print(f"[OK]   HOG+SVM Full Body loaded        → standing figures")
+        print(f"[OK]   Upper Body Haar Cascade loaded  -> seated + standing")
+        print(f"[OK]   HOG+SVM Full Body loaded        -> standing figures")
 
     def detect(self, frame):
         """

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import './index.css';
 import Sidebar from './components/Sidebar';
@@ -26,13 +26,28 @@ import AshaPatients from './pages/asha/Patients';
 import AshaBookings from './pages/asha/Bookings';
 import Schemes from './pages/asha/Schemes';
 
+import { gsap } from 'gsap';
 import { seedData } from './services/api';
 
 function Layout({ user, onLogout }) {
+  const orb1 = useRef(null);
+  const orb2 = useRef(null);
+  const orb3 = useRef(null);
+
+  useEffect(() => {
+    const config = { y: '+=30', x: '+=20', duration: 4, repeat: -1, yoyo: true, ease: 'sine.inOut', force3D: true };
+    gsap.to(orb1.current, config);
+    gsap.to(orb2.current, { ...config, y: '-=40', x: '-=15', duration: 5, delay: 1 });
+    gsap.to(orb3.current, { ...config, y: '+=20', x: '-=30', duration: 6, delay: 0.5 });
+  }, []);
+
   return (
-    <div style={{ display: 'flex' }}>
+    <div className="app-layout">
+      <div ref={orb1} className="float-orb orb-1" />
+      <div ref={orb2} className="float-orb orb-2" />
+      <div ref={orb3} className="float-orb orb-3" />
       <Sidebar user={user} onLogout={onLogout} />
-      <main style={{ flex: 1, marginLeft: 260, padding: '28px 32px', minHeight: '100vh' }}>
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

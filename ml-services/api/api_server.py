@@ -123,6 +123,6 @@ if __name__ == '__main__':
     parser.add_argument('--backend', default='http://localhost:5000')
     args = parser.parse_args()
     BACKEND_URL = args.backend
-    print(f"🤖 ML API server running on port {args.port}")
-    print(f"📡 Backend: {BACKEND_URL}")
+    print(f"ML API server running on port {args.port}")
+    print(f"Backend: {BACKEND_URL}")
     app.run(host='0.0.0.0', port=args.port, debug=False)
