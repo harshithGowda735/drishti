@@ -29,7 +29,7 @@ except ImportError:
     OPENCV_AVAILABLE = False
 
 app = FastAPI(
-    title="AegisOS AI Intelligence Engine",
+    title="HealthConnect AI Intelligence Engine",
     description="ML-powered diagnostics and Computer Vision crowd intelligence.",
     version="1.1.0"
 )
@@ -56,7 +56,7 @@ def get_crowd_intel(hospital_id: str):
     """
     if hospital_id not in iot_nodes:
         iot_nodes[hospital_id] = {
-            "node_id": f"Aegis-{hospital_id[:4].upper()}-CAM",
+            "node_id": f"HC-{hospital_id[:4].upper()}-CAM",
             "last_count": random.randint(5, 30)
         }
     
@@ -97,7 +97,7 @@ def analyze_frame(hospital_id: str, data: FrameData):
     """
     count = data.count if data.count is not None else random.randint(5, 15)
     iot_nodes[hospital_id] = {
-        "node_id": f"Aegis-{hospital_id[:4].upper()}-CV",
+        "node_id": f"HC-{hospital_id[:4].upper()}-CV",
         "last_count": count
     }
     return {
@@ -110,7 +110,7 @@ def analyze_frame(hospital_id: str, data: FrameData):
 @app.get("/")
 def root():
     return {
-        "engine": "AegisOS AI",
+        "engine": "HealthConnect AI",
         "endpoints": {
             "prediction": "/api/ml/predict",
             "features": "/api/ml/features",

@@ -122,7 +122,7 @@ export default function CrowdMonitor({ user }) {
             peopleCount: count
           }).catch(() => {});
 
-          // AegisOS AI Intelligence Engine Sync (FastAPI)
+          // HealthConnect AI Intelligence Engine Sync (FastAPI)
           fetch(`http://localhost:8000/analyze-frame/${hospital._id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
