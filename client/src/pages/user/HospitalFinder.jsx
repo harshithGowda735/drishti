@@ -159,7 +159,12 @@ export default function HospitalFinder() {
 
       {/* Booking Modal */}
       {bookingModal && selectedHospital && (
-        <BookingModal hospital={selectedHospital} onClose={() => { setBookingModal(false); setSelectedHospital(null); }} />
+        <BookingModal 
+          hospital={selectedHospital} 
+          allHospitals={hospitals}
+          onClose={() => { setBookingModal(false); setSelectedHospital(null); }} 
+          onSwitchHospital={(h) => setSelectedHospital(h)}
+        />
       )}
 
       {/* Hospital Detail Modal */}
@@ -213,7 +218,7 @@ export default function HospitalFinder() {
   );
 }
 
-function BookingModal({ hospital, onClose }) {
+function BookingModal({ hospital, allHospitals, onClose, onSwitchHospital }) {
   const [form, setForm] = useState({ department: '', date: '', timeSlot: '', symptoms: '', type: 'regular' });
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -297,9 +302,25 @@ function BookingModal({ hospital, onClose }) {
             </div>
           </div>
           {hospital.crowdDensity === 'high' && (
-            <button type="button" onClick={onClose} style={{ fontSize: '0.75rem', color: 'var(--primary-light)', background: 'none', border: 'none', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>
-              Find Alternatives
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CROWDED! TRY:</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {allHospitals
+                  .filter(h => h._id !== hospital._id && (h.crowdDensity === 'low' || h.crowdDensity === 'moderate'))
+                  .slice(0, 2)
+                  .map(h => (
+                    <button key={h._id} onClick={() => onSwitchHospital(h)}
+                      style={{ 
+                        fontSize: '0.65rem', padding: '4px 8px', borderRadius: 6, 
+                        background: 'var(--primary-light)', color: 'white', border: 'none', 
+                        cursor: 'pointer', fontWeight: 700 
+                      }}>
+                      {h.name.split(' ')[0]}...
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
           )}
         </div>
         
