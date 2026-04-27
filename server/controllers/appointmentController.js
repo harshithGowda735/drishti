@@ -6,12 +6,31 @@ const Hospital = require('../models/Hospital');
 exports.bookAppointment = async (req, res) => {
   try {
     const { hospital, department, date, timeSlot, type, symptoms, notes, doctor } = req.body;
+    console.log(`📅 Booking attempt: Patient ${req.user._id}, Hospital ${hospital}, Slot ${timeSlot}`);
+
+    // Ensure date is a proper Date object and stripped of time if only date is provided
+    const bookingDate = new Date(date);
+    bookingDate.setHours(0, 0, 0, 0);
+
+    // Build conflict query dynamically
+    const conflictQuery = {
+      hospital,
+      date: {
+        $gte: bookingDate,
+        $lt: new Date(bookingDate.getTime() + 86400000)
+      },
+      timeSlot,
+      status: { $nin: ['cancelled', 'no_show'] }
+    };
+    
+    // Only include doctor if provided
+    if (doctor && doctor !== '') {
+      conflictQuery.doctor = doctor;
+    }
 
     // Check for time slot conflicts
-    const existing = await Appointment.findOne({
-      hospital, date, timeSlot, doctor,
-      status: { $nin: ['cancelled', 'no_show'] }
-    });
+    const existing = await Appointment.findOne(conflictQuery);
+    
     if (existing) {
       return res.status(400).json({ message: 'This time slot is already booked' });
     }
@@ -20,7 +39,14 @@ exports.bookAppointment = async (req, res) => {
 
     const appointment = await Appointment.create({
       patient: req.user._id,
-      hospital, department, date, timeSlot, type, symptoms, notes, doctor,
+      hospital,
+      department,
+      date: bookingDate,
+      timeSlot,
+      type,
+      symptoms: symptoms || [],
+      notes: notes || '',
+      doctor: (doctor && doctor !== '') ? doctor : undefined,
       priority,
       bookedBy: req.body.bookedBy || 'self',
       ashaWorker: req.body.ashaWorker
@@ -31,8 +57,10 @@ exports.bookAppointment = async (req, res) => {
       { path: 'patient', select: 'name phone email' }
     ]);
 
+    console.log(`✅ Appointment booked: ${appointment._id}`);
     res.status(201).json(populated);
   } catch (error) {
+    console.error(`❌ Booking Error: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };

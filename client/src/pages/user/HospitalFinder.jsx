@@ -276,9 +276,31 @@ function BookingModal({ hospital, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900 }}>📅 Book Appointment</h2>
           <button className="btn btn-ghost" onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', padding: 0 }}>✕</button>
+        </div>
+
+        {/* Real-time Crowd Status */}
+        <div style={{ 
+          background: hospital.crowdDensity === 'high' ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
+          borderRadius: 12, padding: '14px 16px', marginBottom: 24,
+          borderLeft: `4px solid ${hospital.crowdDensity === 'high' ? 'var(--danger)' : 'var(--success)'}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: hospital.crowdDensity === 'high' ? 'var(--danger)' : 'var(--success)', textTransform: 'uppercase', marginBottom: 2 }}>
+              Live Crowd Status: {hospital.crowdDensity?.toUpperCase()}
+            </div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Est. Wait: {hospital.crowdDensity === 'high' ? '45-60 mins' : '5-10 mins'}
+            </div>
+          </div>
+          {hospital.crowdDensity === 'high' && (
+            <button type="button" onClick={onClose} style={{ fontSize: '0.75rem', color: 'var(--primary-light)', background: 'none', border: 'none', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>
+              Find Alternatives
+            </button>
+          )}
         </div>
         
         <form onSubmit={handleBook} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
